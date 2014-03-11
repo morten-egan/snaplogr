@@ -109,7 +109,7 @@
 				function sl_error(i, c, s) {
 					errors = [];
 					for(var x=0; x<c.length; x++) {
-						errors.push(''<div class="sl_error"><span class="label label-info">'' + c[x].errnum + ''</span> '' + c[x].errmsg + ''</div>'');
+						errors.push(''<div class="sl_error"><span class="label label-danger">'' + c[x].errnum + ''</span> '' + c[x].errmsg + ''</div>'');
 					}
 
 					var all_errors = $("<div/>", {
@@ -124,7 +124,53 @@
 			htp.p('
 				function sl_runstat(i, c, s) {
 
-					return createContent(i, "Hello World", s);
+					var full_content = $("<div/>");
+
+					// Headers for run1 and run2
+					var headers_bar = $("<div/>", {"class": "row"}).appendTo(full_content);
+					var run1_col = $("<div/>", {"class": "col-md-6"}).appendTo(headers_bar);
+					var run1_head = $("<div/>", {"class": "sl_runstat_head1", html: "Run 1"}).appendTo(run1_col);
+					var run2_col = $("<div/>", {"class": "col-md-6"}).appendTo(headers_bar);
+					var run2_head = $("<div/>", {"class": "sl_runstat_head2", html: "Run 2"}).appendTo(run2_col);
+
+					dateStart = new Date(c.start);
+					dateMiddle = new Date(c.middle);
+					dateEnd = new Date(c.end);
+
+					run1Time = secsBetween(dateStart, dateMiddle);
+					run2Time = secsBetween(dateMiddle, dateEnd);
+					if (run1Time < run2Time) {
+						var run1classes = "sl_runstat_good text-center";
+						var run2classes = "sl_runstat_bad text-center";
+					} else {
+						var run1classes = "sl_runstat_bad text-center";
+						var run2classes = "sl_runstat_good text-center";
+					}
+
+					// Good and Bad badges, with run times
+					var badge_bar = $("<div/>", {"class": "row"}).appendTo(full_content);
+					var run1_col = $("<div/>", {"class": "col-md-4"}).appendTo(badge_bar);
+					var run1_badge = $("<div/>", {"class": run1classes, html: run1Time + " Secs."}).appendTo(run1_col);
+					// Middle col
+					var mid_col = $("<div/>", {"class": "col-md-4"}).appendTo(badge_bar);
+					// right col
+					var run2_col = $("<div/>", {"class": "col-md-4"}).appendTo(badge_bar);
+					var run2_badge = $("<div/>", {"class": run2classes, html: run2Time + " Secs."}).appendTo(run2_col);
+
+					// List of stats and their diffs
+					var all_stats = $("<div/>").appendTo(full_content);
+					for(var x=0; x<c.runstats.length; x++) {
+						// Complete stats row
+						var stats_row = $("<div/>", {"class": "row"}).appendTo(all_stats);
+						var run1_stat_col = $("<div/>", {"class": "col-md-4"}).appendTo(stats_row);
+						var run1_stat = $("<div/>", {"class": "text-center", html: c.runstats[x].start}).appendTo(run1_stat_col);
+						var middle_stat_col = $("<div/>", {"class": "col-md-4"}).appendTo(stats_row);
+						var middle_statname = $("<div/>", {"class": "text-center", html: c.runstats[x].statname}).appendTo(middle_stat_col);
+						var run2_stat_col = $("<div/>", {"class": "col-md-4"}).appendTo(stats_row);
+						var run2_stat = $("<div/>", {"class": "text-center", html: c.runstats[x].end}).appendTo(run2_stat_col);
+					}
+
+					return createContent(i, full_content, s);
 				}
 			');
 		
@@ -155,7 +201,6 @@
 						<link href="http://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" rel="stylesheet">
 						<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
 						<script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
-						<script src="snaplogr_ui.snaplogr_formatters"></script>
 			');
 
 			if page_in = 'snaps' and allowed then
@@ -172,19 +217,25 @@
 							return sd.getHours() + ":" + sd.getMinutes() + ":" + sd.getSeconds();
 						}
 
+						function secsBetween(d1, d2) {
+							diff = d2.getTime() - d1.getTime();
+							var secsDiff = diff/1000;
+							return Math.abs(secsDiff);
+						}
+
 						function loadSnaps() {
 							$.getJSON( "snaplogr_ui.ajax_snaps", function( data ) {
 							  var items = [];
 							  $.each( data, function(index) {
 							  	var snaptime = addMinutes(2);
-							    // items.push(''<div class="snaps" id="snap'' + this.id + ''">'' + this.content + ''<div class="snaps_destruct">This entry will snap at - <span class="snaptimeleft">'' + snaptime + ''</span></div></div>'');
+							    console.log("Execing type: " + this.type);
 							    var itemdata = window["sl_" + this.type](this.id, this.content, snaptime);
 							    items.push(itemdata)
 							    var t = "snapRemove(" + this.id + ")";
 							    setTimeout(t,120000);
 							  });
 							 
-							  $("#snaps_here").append(items);
+							  $("#snaps_here").prepend(items);
 							});
 						}
 
@@ -193,6 +244,7 @@
 							setInterval(function() {loadSnaps();}, 10000);
 						};
 					</script>
+					<script src="snaplogr_ui.snaplogr_formatters"></script>
 				');
 			end if;
 
@@ -213,6 +265,10 @@
 								padding: 10px;
 								padding-left: 20px;
 								color: #FFFFCC;
+								-moz-border-radius: 15px;
+								border-radius: 15px;
+								min-height:80px;
+								border: 1px solid #FFFFCC;
 							}
 
 							.snaps_destruct {
@@ -231,6 +287,34 @@
 
 							.sl_error {
 								margin-bottom: 5px;
+							}
+
+							.sl_runstat_good {
+								-moz-border-radius: 15px;
+								border-radius: 15px;
+								background-color: #2EB82E;
+								vertical-align: middle;
+								border: 1px solid #FFFFCC;
+							}
+
+							.sl_runstat_bad {
+								-moz-border-radius: 15px;
+								border-radius: 15px;
+								background-color: #CC0000;
+								vertical-align: middle;
+								border: 1px solid #FFFFCC;
+							}
+
+							.sl_runstat_head1 {
+								text-align: left;
+								font-size: 18px;
+								padding-left: 15px;
+							}
+
+							.sl_runstat_head2 {
+								text-align: right;
+								font-size: 18px;
+								padding-right: 15px;
 							}
 						</style>
 					</head>
